@@ -6,63 +6,125 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+import com.amap.api.maps.model.LatLng;
+import com.amap.api.maps.model.Poi;
+import com.amap.api.navi.AmapNaviPage;
+import com.amap.api.navi.AmapNaviParams;
+import com.amap.api.navi.AmapNaviType;
+import com.amap.api.navi.AmapPageType;
+import com.amap.api.navi.INaviInfoCallback;
+import com.amap.api.navi.model.AMapNaviLocation;
 
-    // 导航方式
-    public static String NAVI_WAY = "NAVI_WAY";
-    // 步行导航
-    public static String NAVI_WALK = "NAVI_WALK";
-    // 骑车导航
-    public static String NAVI_RIDE = "NAVI_RIDE";
-    // 驾车导航
-    public static String NAVI_DRIVE = "NAVI_DRIVE";
-    // 导航数据
-    public static String NAVI_DATA = "NAVI_DATA";
-    // true表示模拟导航，false表示真实GPS导航（默认true）
-    public static boolean NAVI_TYPE = false;
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //基础地图
-        Button basic = findViewById(R.id.basic);
-        basic.setOnClickListener(this);
-        //定位地图
-        Button location = findViewById(R.id.location);
-        location.setOnClickListener(this);
-        //导航地图
-        Button navigational = findViewById(R.id.navigational);
-        navigational.setOnClickListener(this);
-
+        initView();
     }
 
-    // 步行和骑车导航（无定位的）
-    String s = "[{\"latitude\":39.904556,\"longitude\":116.427231},{\"latitude\":39.904556,\"longitude\":117.427231}]";
-    // 步行和骑车导航（有定位的）
-//    String s = "[null,{\"latitude\":39.904556,\"longitude\":116.427231}]";
-    // 驾车导航（有定位的）中途无经过点
-//    String s = "[null,[],{\"latitude\":39.904556,\"longitude\":116.427231}]";
-    // 驾车导航（有定位的）中途有经过点
-//    String s = "[null,[{\"latitude\":39.904556,\"longitude\":116.427231}],{\"latitude\":39.904556,\"longitude\":119.427231}]";
-    // 驾车导航（无定位的）中途无经过点
-//    String s = "[{\"latitude\":39.904556,\"longitude\":116.427231},{},{\"latitude\":39.904556,\"longitude\":117.427231}]";
-    // 驾车导航（无定位的）中途有经过点
-//    String s = "[{\"latitude\":39.904556,\"longitude\":116.427231},[{\"latitude\":39.904556,\"longitude\":117.427231}],{\"latitude\":39.904556,\"longitude\":119.427231}]";
+    private void initView() {
+        Button basic = findViewById(R.id.basic);
+        Button location = findViewById(R.id.location);
+        Button navigational = findViewById(R.id.navigational);
+
+        basic.setOnClickListener(this);
+        location.setOnClickListener(this);
+        navigational.setOnClickListener(this);
+    }
+
 
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.basic:
+                //基础
                 startActivity(new Intent(this, BasicMap.class));
                 break;
             case R.id.location:
+                //定位
                 startActivity(new Intent(this, LocationMap.class));
                 break;
             case R.id.navigational:
-                startActivity(new Intent(this, NavigationalMap.class).putExtra(NAVI_WAY, NAVI_DRIVE).putExtra(NAVI_DATA, s));
-                break;
-            default:
+                //导航
+                LatLng startLatLng = new LatLng(39.773801, 116.368984);//新三余公园(南5环)
+                LatLng endLatLng = new LatLng(40.041986, 116.414496);//立水桥(北5环)
+                Poi start = new Poi("立水桥(北5环)", endLatLng, "");//起点
+                Poi end = new Poi("新三余公园(南5环)", startLatLng, "");//终点
+                AmapNaviParams amapNaviParams = new AmapNaviParams(start, null, end, AmapNaviType.DRIVER, AmapPageType.NAVI);
+                amapNaviParams.setUseInnerVoice(true);
+                AmapNaviPage.getInstance().showRouteActivity(getApplicationContext(), amapNaviParams, new INaviInfoCallback() {
+                    @Override
+                    public void onInitNaviFailure() {
+
+                    }
+
+                    @Override
+                    public void onGetNavigationText(String s) {
+
+                    }
+
+                    @Override
+                    public void onLocationChange(AMapNaviLocation aMapNaviLocation) {
+
+                    }
+
+                    @Override
+                    public void onArriveDestination(boolean b) {
+
+                    }
+
+                    @Override
+                    public void onStartNavi(int i) {
+
+                    }
+
+                    @Override
+                    public void onCalculateRouteSuccess(int[] ints) {
+
+                    }
+
+                    @Override
+                    public void onCalculateRouteFailure(int i) {
+
+                    }
+
+                    @Override
+                    public void onStopSpeaking() {
+
+                    }
+
+                    @Override
+                    public void onReCalculateRoute(int i) {
+
+                    }
+
+                    @Override
+                    public void onExitPage(int i) {
+
+                    }
+
+                    @Override
+                    public void onStrategyChanged(int i) {
+
+                    }
+
+                    @Override
+                    public View getCustomNaviBottomView() {
+                        return null;
+                    }
+
+                    @Override
+                    public View getCustomNaviView() {
+                        return null;
+                    }
+
+                    @Override
+                    public void onArrivedWayPoint(int i) {
+
+                    }
+                });
                 break;
         }
     }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.littonishir.amapguide">
 
     <!-- ~~~~~~~~~~~高德地图所需权限~~~~~~~~~~~ -->
@@ -36,17 +37,23 @@
             </intent-filter>
         </activity>
         <!-- 地图 -->
-        <meta-data android:name="com.amap.api.v2.apikey"
-            android:value="578c98dcba2f93cfc4d542de348fe6f7"/>
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="578c98dcba2f93cfc4d542de348fe6f7" />
         <!-- 定位 -->
         <service android:name="com.amap.api.location.APSService" />
         <!-- 导航 -->
-        <activity android:name="com.amap.api.navi.AmapRouteActivity"
-            android:theme="@android:style/Theme.NoTitleBar"
-            android:configChanges="orientation|keyboardHidden|screenSize" />
+        <activity
+            android:name="com.amap.api.navi.AmapRouteActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:theme="@android:style/Theme.NoTitleBar" />
         <activity android:name=".BasicMap" />
         <activity android:name=".LocationMap" />
-        <activity android:name=".NavigationalMap" />
+        <activity
+            android:name="com.amap.api.navi.AmapRouteActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:theme="@android:style/Theme.NoTitleBar"
+            tools:ignore="DuplicateActivity" />
     </application>
 
 </manifest>

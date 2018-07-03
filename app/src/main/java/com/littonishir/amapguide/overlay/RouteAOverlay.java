@@ -19,7 +19,7 @@ import com.littonishir.amapguide.R;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RouteOverlay {
+public class RouteAOverlay {
 	protected List<Marker> stationMarkers = new ArrayList<Marker>();
 	protected List<Polyline> allPolyLines = new ArrayList<Polyline>();
 	protected Marker startMarker;
@@ -31,7 +31,7 @@ public class RouteOverlay {
 	private Bitmap startBit, endBit, busBit, walkBit, driveBit;
 	protected boolean nodeIconVisible = true;
 
-	public RouteOverlay(Context context) {
+	public RouteAOverlay(Context context) {
 		mContext = context;
 	}
 

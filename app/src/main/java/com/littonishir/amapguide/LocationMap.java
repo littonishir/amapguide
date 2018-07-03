@@ -2,14 +2,12 @@ package com.littonishir.amapguide;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
 import com.amap.api.location.AMapLocation;
@@ -21,6 +19,7 @@ import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
 import com.amap.api.maps.UiSettings;
+import com.amap.api.maps.model.BitmapDescriptor;
 import com.amap.api.maps.model.BitmapDescriptorFactory;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
@@ -33,15 +32,15 @@ import com.amap.api.services.route.DriveRouteResult;
 import com.amap.api.services.route.RideRouteResult;
 import com.amap.api.services.route.RouteSearch;
 import com.amap.api.services.route.WalkRouteResult;
-import com.littonishir.amapguide.overlay.DrivingRouteOverlay;
+import com.littonishir.amapguide.overlay.DrivingARouteAOverlay;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class LocationMap extends AppCompatActivity implements LocationSource, AMapLocationListener, RouteSearch.OnRouteSearchListener {
 
-    private MapView mMapView = null;
-    private AMap aMap = null;
+    private MapView mGMapView = null;
+    private AMap agMap = null;
     private OnLocationChangedListener mListener = null;
     private AMapLocationClient mLocationClient = null;
     private boolean isFirstLoc = true;
@@ -51,33 +50,34 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
     private int READ_EXTERNAL_STORAGE_CODE = 4;
     private int READ_PHONE_STATE_CODE = 5;
 
+
     //路线规划
     private RouteSearch mRouteSearch;
     private DriveRouteResult mDriveRouteResult;
-    private final int ROUTE_TYPE_DRIVE = 2;
-    private DrivingRouteOverlay drivingRouteOverlay;
+    private DrivingARouteAOverlay drivingARouteOverlay;
     private double latitude;
     private double longitude;
     private boolean isOverlay = false;
+    private MarkerOptions markerOption;
+    private BitmapDescriptor normal;
+    private BitmapDescriptor pressed;
+    private Marker myMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_basicmap);
+        normal = BitmapDescriptorFactory.fromResource(R.drawable.normal);
+        pressed = BitmapDescriptorFactory.fromResource(R.drawable.pressed);
+        initAmap(savedInstanceState);
 
-        //返回
-        Button back = findViewById(R.id.back);
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
 
+    }
+
+    private void initAmap(Bundle savedInstanceState) {
         //获取地图控件引用
-        mMapView = findViewById(R.id.map_view);
-        //在activity执行onCreate时执行mMapView.onCreate(savedInstanceState)，实现地图生命周期管理
-        mMapView.onCreate(savedInstanceState);
+        mGMapView = findViewById(R.id.map_view);
+        mGMapView.onCreate(savedInstanceState);
 
         //SDK在Android 6.0下需要进行运行检测的权限如下：
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -93,20 +93,19 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, READ_PHONE_STATE_CODE);
         }
 
-        if (aMap == null) {
-            aMap = mMapView.getMap();
+        if (agMap == null) {
+            agMap = mGMapView.getMap();
             //设置显示定位按钮 并且可以点击
-            UiSettings settings = aMap.getUiSettings();
+            UiSettings settings = agMap.getUiSettings();
             settings.setMyLocationButtonEnabled(true);
 
-            aMap.setLocationSource(this);//设置了定位的监听,这里要实现LocationSource接口
+            agMap.setLocationSource(this);//设置了定位的监听,这里要实现LocationSource接口
             // 是否显示定位按钮
-            aMap.setMyLocationEnabled(true);//显示定位层并且可以触发定位,默认是flase
+            agMap.setMyLocationEnabled(true);//显示定位层并且可以触发定位,默认是flase
         }
 
         //初始化定位
         mLocationClient = new AMapLocationClient(getApplicationContext());
-        //设置定位回调监听，这里要实现AMapLocationListener接口，AMapLocationListener接口只有onLocationChanged方法可以实现，用于接收异步返回的定位结果，参数是AMapLocation类型。
         mLocationClient.setLocationListener(this);
         //初始化定位参数
         AMapLocationClientOption mLocationOption = new AMapLocationClientOption();
@@ -132,44 +131,37 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
         mRouteSearch = new RouteSearch(this);
         mRouteSearch.setRouteSearchListener(this);
 
-        //--------------覆盖物----------------
+        //添加覆盖物---------------------------------------------
         LatLng latLng = new LatLng(39.906901, 116.397972);
-        MarkerOptions markerOption = new MarkerOptions();
+        markerOption = new MarkerOptions();
         markerOption.position(latLng);
         markerOption.draggable(false);//设置Marker可拖动
-        markerOption.icon(BitmapDescriptorFactory.fromBitmap(BitmapFactory
-                .decodeResource(getResources(), R.mipmap.ic_launcher)));
-        // 将Marker设置为贴地显示，可以双指下拉地图查看效果
+        markerOption.icon(normal);
         markerOption.setFlat(true);//设置marker平贴地图效果
-        aMap.addMarker(markerOption);
+        myMarker = agMap.addMarker(markerOption);
+        //添加覆盖物---------------------------------------------
 
-        // 定义 Marker 点击事件监听
-        AMap.OnMarkerClickListener markerClickListener = new AMap.OnMarkerClickListener() {
-            /**
-             * marker对象点击回调的接口
-             * 返回true表示已响应事件,否则返回false
-             * @param marker
-             * @return
-             */
-            @Override
-            public boolean onMarkerClick(Marker marker) {
-                if (!isOverlay){
-                    searchRouteResult(ROUTE_TYPE_DRIVE, RouteSearch.DrivingDefault);
-                }
-                return true;
-            }
-        };
-        // 绑定 Marker 被点击事件
-        aMap.setOnMarkerClickListener(markerClickListener);
-        aMap.setOnMapClickListener(new AMap.OnMapClickListener() {
+        //设置地图的点击事件
+        agMap.setOnMapClickListener(new AMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 isOverlay = false;
-                drivingRouteOverlay.removeFromMap();
+                myMarker.setIcon(normal);
+                drivingARouteOverlay.removeFromMap();
 
             }
         });
-        //--------------覆盖物----------------
+        //设置Marker的点击事件
+        agMap.setOnMarkerClickListener(new AMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                if (!isOverlay) {
+                    myMarker.setIcon(pressed);
+                    searchRouteResult(RouteSearch.DrivingDefault);
+                }
+                return true;
+            }
+        });
 
     }
 
@@ -177,7 +169,7 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
     protected void onDestroy() {
         super.onDestroy();
         //在activity执行onDestroy时执行mMapView.onDestroy()，实现地图生命周期管理
-        mMapView.onDestroy();
+        mGMapView.onDestroy();
         mLocationClient.stopLocation();//停止定位
         mLocationClient.onDestroy();//销毁定位客户端。
         //销毁定位客户端之后，若要重新开启定位请重新New一个AMapLocationClient对象。
@@ -186,22 +178,19 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
     @Override
     protected void onResume() {
         super.onResume();
-        //在activity执行onResume时执行mMapView.onResume ()，实现地图生命周期管理
-        mMapView.onResume();
+        mGMapView.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        //在activity执行onPause时执行mMapView.onPause ()，实现地图生命周期管理
-        mMapView.onPause();
+        mGMapView.onPause();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        //在activity执行onSaveInstanceState时执行mMapView.onSaveInstanceState (outState)，实现地图生命周期管理
-        mMapView.onSaveInstanceState(outState);
+        mGMapView.onSaveInstanceState(outState);
     }
 
     //激活定位
@@ -221,9 +210,8 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
             if (aMapLocation.getErrorCode() == 0) {
                 //定位成功回调信息，设置相关消息
                 aMapLocation.getLocationType();//获取当前定位结果来源，如网络定位结果，详见官方定位类型表
-                aMapLocation.getLatitude();//获取纬度
-                aMapLocation.getLongitude();//获取经度
                 aMapLocation.getAccuracy();//获取精度信息
+
                 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 Date date = new Date(aMapLocation.getTime());
                 df.format(date);//定位时间
@@ -240,9 +228,9 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
                 // 如果不设置标志位，此时再拖动地图时，它会不断将地图移动到当前的位置
                 if (isFirstLoc) {
                     //设置缩放级别
-                    aMap.moveCamera(CameraUpdateFactory.zoomTo(14));
+                    agMap.moveCamera(CameraUpdateFactory.zoomTo(14));
                     //将地图移动到定位点
-                    aMap.moveCamera(CameraUpdateFactory.changeLatLng(new LatLng(aMapLocation.getLatitude(), aMapLocation.getLongitude())));
+                    agMap.moveCamera(CameraUpdateFactory.changeLatLng(new LatLng(aMapLocation.getLatitude(), aMapLocation.getLongitude())));
                     //点击定位按钮 能够将地图的中心移动到定位点
                     mListener.onLocationChanged(aMapLocation);
                     //获取定位信息
@@ -254,8 +242,8 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
                             + aMapLocation.getDistrict() + ""
                             + aMapLocation.getStreet() + ""
                             + aMapLocation.getStreetNum());
-                    latitude = aMapLocation.getLatitude();
-                    longitude = aMapLocation.getLongitude();
+                    this.latitude = aMapLocation.getLatitude();
+                    this.longitude = aMapLocation.getLongitude();
                     Toast.makeText(getApplicationContext(), buffer.toString(), Toast.LENGTH_LONG).show();
                     isFirstLoc = false;
                 }
@@ -269,49 +257,18 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        //可在此继续其他操作。
-        if (requestCode == ACCESS_COARSE_LOCATION_CODE) {
-            Toast.makeText(getApplicationContext(), "ACCESS_COARSE_LOCATION_CODE", Toast.LENGTH_LONG).show();
-        } else if (requestCode == ACCESS_FINE_LOCATION_CODE) {
-            Toast.makeText(getApplicationContext(), "ACCESS_FINE_LOCATION_CODE", Toast.LENGTH_LONG).show();
-        } else if (requestCode == WRITE_EXTERNAL_STORAGE_CODE) {
-            Toast.makeText(getApplicationContext(), "WRITE_EXTERNAL_STORAGE_CODE", Toast.LENGTH_LONG).show();
-        } else if (requestCode == READ_EXTERNAL_STORAGE_CODE) {
-            Toast.makeText(getApplicationContext(), "READ_EXTERNAL_STORAGE_CODE", Toast.LENGTH_LONG).show();
-        } else if (requestCode == READ_PHONE_STATE_CODE) {
-            Toast.makeText(getApplicationContext(), "READ_PHONE_STATE_CODE", Toast.LENGTH_LONG).show();
-        }
-
-    }
-
-
 
     /**
      * 开始搜索路径规划方案
      */
-    public void searchRouteResult(int routeType, int mode) {
-        LatLonPoint mStartPoint = new LatLonPoint(latitude,longitude);//起点，39.942295,116.335891
-
-        LatLonPoint mEndPoint = new LatLonPoint(39.906901,116.397972);//终点，39.995576,116.481288
-
-        if (mStartPoint == null) {
-            Toast.makeText(this, "定位中，稍后再试", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (mEndPoint == null) {
-            Toast.makeText(this, "定位中，终点未设置", Toast.LENGTH_SHORT).show();
-
-        }
-        final RouteSearch.FromAndTo fromAndTo = new RouteSearch.FromAndTo(
-                mStartPoint, mEndPoint);
-        if (routeType == ROUTE_TYPE_DRIVE) {// 驾车路径规划
-            RouteSearch.DriveRouteQuery query = new RouteSearch.DriveRouteQuery(fromAndTo, mode, null,
-                    null, "");// 第一个参数表示路径规划的起点和终点，第二个参数表示驾车模式，第三个参数表示途经点，第四个参数表示避让区域，第五个参数表示避让道路
-            mRouteSearch.calculateDriveRouteAsyn(query);// 异步路径规划驾车模式查询
-        }
+    public void searchRouteResult(int mode) {
+        LatLonPoint mStartPoint = new LatLonPoint(latitude, longitude);
+        LatLonPoint mEndPoint = new LatLonPoint(39.906901, 116.397972);
+        final RouteSearch.FromAndTo fromAndTo = new RouteSearch.FromAndTo(mStartPoint, mEndPoint);
+        // 第一个参数表示路径规划的起点和终点，第二个参数表示驾车模式，第三个参数表示途经点，第四个参数表示避让区域，第五个参数表示避让道路
+        RouteSearch.DriveRouteQuery query = new RouteSearch.DriveRouteQuery(fromAndTo, mode, null, null, "");
+        // 异步路径规划驾车模式查询
+        mRouteSearch.calculateDriveRouteAsyn(query);
     }
 
 
@@ -322,32 +279,25 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
 
     @Override
     public void onDriveRouteSearched(DriveRouteResult result, int errorCode) {
-//        aMap.clear();// 清理地图上的所有覆盖物
         if (errorCode == AMapException.CODE_AMAP_SUCCESS) {
             if (result != null && result.getPaths() != null) {
                 if (result.getPaths().size() > 0) {
                     mDriveRouteResult = result;
                     final DrivePath drivePath = mDriveRouteResult.getPaths()
                             .get(0);
-                    if(drivePath == null) {
+                    if (drivePath == null) {
                         return;
                     }
-                    drivingRouteOverlay = new DrivingRouteOverlay(
-                            this, aMap, drivePath,
+                    drivingARouteOverlay = new DrivingARouteAOverlay(
+                            this, agMap, drivePath,
                             mDriveRouteResult.getStartPos(),
                             mDriveRouteResult.getTargetPos(), null);
-                    drivingRouteOverlay.setNodeIconVisibility(false);//设置节点marker是否显示
-                    drivingRouteOverlay.setIsColorfulline(false);//是否用颜色展示交通拥堵情况，默认true
-                    drivingRouteOverlay.removeFromMap();
-                    drivingRouteOverlay.addToMap();
-                    drivingRouteOverlay.zoomToSpan();
-
+                    drivingARouteOverlay.setNodeIconVisibility(false);//设置节点marker是否显示
+                    drivingARouteOverlay.setIsColorfulline(false);//是否用颜色展示交通拥堵情况，默认true
+                    drivingARouteOverlay.removeFromMap();
+                    drivingARouteOverlay.addToMap();
+                    drivingARouteOverlay.zoomToSpan();
                     isOverlay = true;
-//                    int dis = (int) drivePath.getDistance();
-//                    int dur = (int) drivePath.getDuration();
-//                    String des = AMapUtil.getFriendlyTime(dur)+"("+AMapUtil.getFriendlyLength(dis)+")";
-//                    int taxiCost = (int) mDriveRouteResult.getTaxiCost();
-
                 } else if (result != null && result.getPaths() == null) {
                     Toast.makeText(this, "定位中，终点未no_result设置", Toast.LENGTH_SHORT).show();
 
@@ -357,7 +307,7 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
                 Toast.makeText(this, "定位中，终点未no_result设置", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, "errorCode:"+errorCode, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "errorCode:" + errorCode, Toast.LENGTH_SHORT).show();
 
         }
 
@@ -372,5 +322,10 @@ public class LocationMap extends AppCompatActivity implements LocationSource, AM
     @Override
     public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
 
+    }
+
+
+    public void back(View view) {
+        finish();
     }
 }
